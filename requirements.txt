@@ -1,0 +1,10 @@
+pycocoevalcap
+accelerate
+git+https://github.com/huggingface/transformers.git@main
+gradio
+elasticsearch
+efficientnet-pytorch
+Pillow
+numpy
+torch
+torchvision
