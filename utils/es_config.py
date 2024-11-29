@@ -22,11 +22,7 @@ def fetch_matching_data(predictions):
     for category in categories:
         query = {
             "size": 1000,
-            "query": {
-                "wildcard": {
-                    "category.keyword": f"kor_{category}"  # 'kor_' 접두사를 붙인 카테고리 검색
-                }
-            },
+            "query": {"wildcard": {"category": f"kor_{category}"}},
         }
         try:
             response = es.search(index="embeddings", body=query)
@@ -43,11 +39,11 @@ if __name__ == "__main__":
 
     # 예시 predictions (분류 결과)
     predictions = [
-        ("castle", 80.5),
-        ("buddhist_temple", 75.2),
-        ("museum", 60.1),
-        ("mountain", 50.0),
-        ("river", 45.3),
+        ("castle", 80.5),  # 91개
+        # ("buddhist temple", 75.2),
+        # ("museum", 60.1),
+        # ("mountain", 50.0),
+        # ("river", 45.3),
     ]
 
     matching_data = fetch_matching_data(predictions)
@@ -55,6 +51,5 @@ if __name__ == "__main__":
     print("Matching Data from Elasticsearch:")
     for data in matching_data:
         print(data)
-        break
 
     print(len(matching_data))
