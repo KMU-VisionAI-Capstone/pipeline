@@ -27,7 +27,9 @@ def rank_matches(image_embedding, text_embedding, matching_data, alpha):
 
         # 가중치 조합
         combined_similarity = alpha * image_similarity + (1 - alpha) * text_similarity
-        ranked_results.append((data["file_name"], combined_similarity))
+        ranked_results.append(
+            (data["file_name"], combined_similarity, data["file_path"])
+        )
 
     # 유사도 기준 내림차순 정렬
     ranked_results.sort(key=lambda x: x[1], reverse=True)
