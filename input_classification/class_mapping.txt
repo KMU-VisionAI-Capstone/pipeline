@@ -1,31 +1,18 @@
-0: amusement park
-1: archeological site
-2: beach
-3: bridge
-4: buddhist temple
-5: castle
-6: cemetery
-7: church
-8: garden
-9: harbor
-10: hotel
-11: lake
-12: library
-13: lighthouse
-14: market
-15: mountain
-16: museum
-17: ocean area 
-18: palace
-19: parks
-20: rail transportation
-21: river
-22: sculpture
-23: settlement
-24: shinto shrine
-25: skyscraper
-26: sports venue
-27: square
-28: tower
-29: waterfall
-30: zoo
+0: archeological site
+1: beach
+2: bridge
+3: buddhist temple
+4: castle
+5: church
+6: garden
+7: harbor
+8: lake
+9: library
+10: lighthouse
+11: mountain
+12: museum
+13: palace
+14: park
+15: river
+16: sculpture
+17: waterfall
