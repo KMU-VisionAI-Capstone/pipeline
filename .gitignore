@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 *.tar
 *.pt
+.vscode/
+target_images/
+embeddings.json
