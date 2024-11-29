@@ -7,7 +7,7 @@ import numpy as np
 # 전역 변수
 MODEL_ARCH = "efficientnet-b1"  # 모델 아키텍처
 CHECKPOINT_PATH = (
-    "./input_classification/model_best_20241122-233501.pth.tar"  # 체크포인트 파일 경로
+    "./input_classification/model_best_20241129-005608.pth.tar"  # 체크포인트 파일 경로
 )
 CLASS_MAPPING_FILE = (
     "./input_classification/class_mapping.txt"  # 클래스 이름 매핑 파일 경로
@@ -81,7 +81,6 @@ def predict(input_data, model, idx_to_class, top_k=5):
 
 def classify(input_data):
     """메인 실행 함수."""
-    print(f"Input Data Type: {type(input_data)}")
 
     # 모델 로드
     model = load_model(CHECKPOINT_PATH, MODEL_ARCH)
@@ -94,7 +93,7 @@ def classify(input_data):
 
     # 결과 출력
     for class_name, prob in predictions:
-        print(f"{class_name}: {prob:.2f}%")
+        print(f"  {class_name}: {prob:.2f}%")
 
     return predictions
 
