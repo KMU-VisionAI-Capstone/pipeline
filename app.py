@@ -6,32 +6,26 @@ from utils.embedding import generate_image_embedding, generate_text_embedding
 from utils.similarity import rank_matches
 
 
-def get_classification_ui(predictions):
+def update_classification_ui(predictions):
     """분류 결과 UI를 반환합니다."""
-    html_result = "<h2>Top Predictions</h2>"
+    classification_result = "<h2>Top Predictions</h2>"
     for label, score in predictions:
-        html_result += f"<p><strong>{label}:</strong> {score:.2f}%</p>"
-    return html_result
-
-
-def get_caption_ui(caption):
-    """캡션 결과 UI를 반환합니다."""
-    html_result = f"<h2>Generated Caption</h2><p>{caption}</p>"
-    return html_result
+        classification_result += f"<p><strong>{label}:</strong> {score:.2f}%</p>"
+    return classification_result
 
 
 def update_caption_ui(image_input):
-    """이미지 캡션 결과를 HTML로 반환"""
+    """이미지 캡션 결과 UI를 반환합니다."""
     caption = captioning(image_input)
-    caption_html = get_caption_ui(caption)
-    return caption, caption_html
+    caption_result = f"<h2>Generated Caption</h2><p>{caption}</p>"
+    return caption, caption_result
 
 
 def on_click(image_input, alpha):
     """버튼 클릭 시 워크플로우 수행"""
     # 분류 수행
     predictions = classify(image_input)
-    classification_html = get_classification_ui(predictions)
+    classification_html = update_classification_ui(predictions)
 
     # 캡셔닝 생성
     caption_text, caption_html = update_caption_ui(image_input)
