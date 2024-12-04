@@ -1,4 +1,5 @@
 import gradio as gr
+import time
 from input_classification.classification import classify
 from image_captioning.captioning_baseft import captioning
 from utils.es_config import fetch_matching_data
@@ -20,38 +21,69 @@ def update_caption_ui(image_input):
     caption_result = f"<h2>Generated Caption</h2><p>{caption}</p>"
     return caption, caption_result
 
+def update_gallery_ui(ranked_results):
+    """갤러리 UI를 반환합니다."""
+    gallery = []
+    results_html = "<h2>Top Matching Results</h2>"
+    for similarity, file_path in ranked_results[:5]:
+        results_html += f"<p><strong>{file_path.split('/')[-2].replace('kor_', '')} - {file_path.split('/')[-1]}:</strong> {similarity:.4f}</p>"
+        gallery.append(file_path)
+    return gallery, results_html
 
-def on_click(image_input, alpha):
+
+def on_click(image_input, alpha, checkbox):
     """버튼 클릭 시 워크플로우 수행"""
+    start_time = time.time()
+
     # 분류 수행
-    predictions = classify(image_input)
-    classification_html = update_classification_ui(predictions)
+    if checkbox:
+        predictions = classify(image_input)
+        classification_html = update_classification_ui(predictions)
+    else:
+        classification_html = ""
 
-    # 캡셔닝 생성
-    caption_text, caption_html = update_caption_ui(image_input)
+    if alpha == 0:
+        # 캡션 및 텍스트 임베딩 생성
+        caption_text, caption_html = update_caption_ui(image_input)
+        text_embedding = generate_text_embedding(caption_text)
+        image_embedding = None
 
-    # 이미지 및 텍스트 임베딩 생성
-    image_embedding = generate_image_embedding(image_input)
-    text_embedding = generate_text_embedding(caption_text)
-    print("Embeddings Generated")
+    elif alpha == 1:
+        # 이미지 임베딩 생성
+        caption_html = ""
+        image_embedding = generate_image_embedding(image_input)
+        text_embedding = None
+
+    else:
+        # 이미지 및 텍스트 임베딩 생성
+        caption_text, caption_html = update_caption_ui(image_input)
+        image_embedding = generate_image_embedding(image_input)
+        text_embedding = generate_text_embedding(caption_text)
+        
+    print("[INFO] Embeddings Generated")
 
     # Elasticsearch에서 매칭 데이터 가져오기
-    matching_data = fetch_matching_data(predictions)
-    print(f"Matching Data Length: {len(matching_data)}")
+    if checkbox:
+        matching_data = fetch_matching_data(alpha, predictions)
+    else:
+        matching_data = fetch_matching_data(alpha)
+
+    print(f"[INFO] Matching Data Length: {len(matching_data)}")
 
     # 매칭 데이터와 코사인 유사도 계산
     ranked_results = rank_matches(image_embedding, text_embedding, matching_data, alpha)
 
     # 결과 출력 HTML 생성
-    gallery = []
-    results_html = "<h2>Top Matching Results</h2>"
-    for file_name, similarity, file_path in ranked_results[:5]:  # 상위 5개 결과만 표시
-        results_html += f"<p><strong>{file_name}:</strong> {similarity:.4f}</p>"
-        gallery.append(file_path)
+    gallery, results_html = update_gallery_ui(ranked_results)
 
-    print("Workflow Completed\n")
+    # 수행 시간 계산
+    end_time = time.time()
+    execution_time = end_time - start_time
+    time_html = f"<p><h2>Time Taken</h2> {execution_time:.4f} seconds</p>"
 
-    return classification_html, caption_html, results_html, gallery
+    print("[INFO] Workflow Completed\n")
+
+    return classification_html, caption_html, results_html, gallery, time_html
 
 
 # Gradio 인터페이스 생성
@@ -59,6 +91,13 @@ with gr.Blocks() as demo:
     with gr.Row():
         with gr.Column():
             image_input = gr.Image(label="Input Image")
+            mk = gr.Markdown(
+                "### The closer it gets to 0, the more important text similarity becomes."
+            )
+            mk2 = gr.Markdown(
+                "### And the closer it gets to 1, the more important image similarity becomes."
+            )
+            checkbox = gr.Checkbox(label="Set Classifier?", value=False)
             alpha_slider = gr.Slider(
                 0, 1, value=0.5, step=0.1, label="Alpha (Image-Text Weight)"
             )
@@ -67,6 +106,7 @@ with gr.Blocks() as demo:
             classification_output = gr.HTML(label="Classification Results")
             caption_output = gr.HTML(label="Caption Results")
             matching_results_output = gr.HTML(label="Matching Results")
+            time_output = gr.HTML(label="Time Taken")
     with gr.Column():
         gallery = gr.Gallery(
             interactive=False,
@@ -77,14 +117,15 @@ with gr.Blocks() as demo:
 
     predict_button.click(
         fn=on_click,
-        inputs=[image_input, alpha_slider],
+        inputs=[image_input, alpha_slider, checkbox],
         outputs=[
             classification_output,
             caption_output,
             matching_results_output,
             gallery,
+            time_output,
         ],
     )
 
 
-demo.launch(share=True)
+demo.launch(share=False)
