@@ -4,6 +4,7 @@ from input_classification.classification import classify
 from image_captioning.captioning_baseft import captioning
 from utils.es_config import fetch_matching_data
 from utils.embedding import generate_image_embedding, generate_text_embedding
+from utils.notion_config import push_to_notion
 from utils.similarity import rank_matches
 
 
@@ -21,14 +22,24 @@ def update_caption_ui(image_input):
     caption_result = f"<h2>Generated Caption</h2><p>{caption}</p>"
     return caption, caption_result
 
+
 def update_gallery_ui(ranked_results):
     """갤러리 UI를 반환합니다."""
     gallery = []
+    top_results = []
     results_html = "<h2>Top Matching Results</h2>"
+    results_html_reverse = "<h2>Reverse Matching Results</h2>"
     for similarity, file_path in ranked_results[:5]:
-        results_html += f"<p><strong>{file_path.split('/')[-2].replace('kor_', '')} - {file_path.split('/')[-1]}:</strong> {similarity:.4f}</p>"
+        class_name = file_path.split("/")[-2].replace("kor_", "")
+        file_name = file_path.split("/")[-1]
+        results_html += (
+            f"<p><strong>{class_name} - {file_name}:</strong> {similarity:.4f}</p>"
+        )
         gallery.append(file_path)
-    return gallery, results_html
+        top_results.append(f"{class_name} - {file_name} : {similarity:.4f}")
+    for similarity, file_path in ranked_results[::-1][:5]:
+        results_html_reverse += f"<p><strong>{file_path.split('/')[-2].replace('kor_', '')} - {file_path.split('/')[-1]}:</strong> {similarity:.4f}</p>"
+    return gallery, top_results, results_html, results_html_reverse
 
 
 def on_click(image_input, alpha, checkbox):
@@ -59,14 +70,14 @@ def on_click(image_input, alpha, checkbox):
         caption_text, caption_html = update_caption_ui(image_input)
         image_embedding = generate_image_embedding(image_input)
         text_embedding = generate_text_embedding(caption_text)
-        
+
     print("[INFO] Embeddings Generated")
 
     # Elasticsearch에서 매칭 데이터 가져오기
     if checkbox:
-        matching_data = fetch_matching_data(alpha, predictions)
+        matching_data = fetch_matching_data(alpha=alpha, predictions=predictions)
     else:
-        matching_data = fetch_matching_data(alpha)
+        matching_data = fetch_matching_data(alpha=alpha)
 
     print(f"[INFO] Matching Data Length: {len(matching_data)}")
 
@@ -74,43 +85,79 @@ def on_click(image_input, alpha, checkbox):
     ranked_results = rank_matches(image_embedding, text_embedding, matching_data, alpha)
 
     # 결과 출력 HTML 생성
-    gallery, results_html = update_gallery_ui(ranked_results)
+    gallery, top_results, results_html, results_html_reverse = update_gallery_ui(
+        ranked_results
+    )
 
     # 수행 시간 계산
     end_time = time.time()
     execution_time = end_time - start_time
-    time_html = f"<p><h2>Time Taken</h2> {execution_time:.4f} seconds</p>"
+    time_html = (
+        f"<h2>Time Taken</h2> <p><strong>{execution_time:.4f} seconds</strong></p>"
+    )
+
+    response = push_to_notion(
+        image_input,
+        alpha,
+        top_results,
+        execution_time,
+        checkbox,
+        caption_text,
+        classification_html,
+    )
+    if response.status_code == 200:
+        print("[INFO] Notion Push Success")
+    else:
+        print("[Warning] Notion Push Failed")
+        print(response.json())
 
     print("[INFO] Workflow Completed\n")
 
-    return classification_html, caption_html, results_html, gallery, time_html
+    return (
+        classification_html,
+        caption_html,
+        results_html,
+        results_html_reverse,
+        gallery,
+        time_html,
+    )
 
 
 # Gradio 인터페이스 생성
 with gr.Blocks() as demo:
     with gr.Row():
         with gr.Column():
-            image_input = gr.Image(label="Input Image")
-            mk = gr.Markdown(
+            image_input = gr.Image(type="filepath")
+            gr.Markdown(
                 "### The closer it gets to 0, the more important text similarity becomes."
             )
-            mk2 = gr.Markdown(
+            gr.Markdown(
                 "### And the closer it gets to 1, the more important image similarity becomes."
             )
-            checkbox = gr.Checkbox(label="Set Classifier?", value=False)
+            with gr.Row():
+                checkbox = gr.Checkbox(
+                    label="Set Classifier?", value=True, show_label=False
+                )
             alpha_slider = gr.Slider(
-                0, 1, value=0.5, step=0.1, label="Alpha (Image-Text Weight)"
+                0,
+                1,
+                value=0.5,
+                step=0.1,
+                label="Alpha (Image-Text Weight)",
             )
             predict_button = gr.Button("Run Workflow")
-        with gr.Column():
-            classification_output = gr.HTML(label="Classification Results")
-            caption_output = gr.HTML(label="Caption Results")
-            matching_results_output = gr.HTML(label="Matching Results")
-            time_output = gr.HTML(label="Time Taken")
+        with gr.Row():
+            gr.Markdown()
+            with gr.Column(scale=2):
+                classification_output = gr.HTML()
+                caption_output = gr.HTML()
+                matching_results_output = gr.HTML()
+                matching_results_output_reverse = gr.HTML()
+                time_output = gr.HTML()
+            gr.Markdown()
     with gr.Column():
         gallery = gr.Gallery(
             interactive=False,
-            label="Top Matching Images",
             columns=5,
             height=300,
         )
@@ -122,10 +169,11 @@ with gr.Blocks() as demo:
             classification_output,
             caption_output,
             matching_results_output,
+            matching_results_output_reverse,
             gallery,
             time_output,
         ],
     )
 
 
-demo.launch(share=False)
+demo.launch(share=True)
