@@ -13,10 +13,12 @@ es = Elasticsearch(
     ssl_show_warn=False,
     basic_auth=("elastic", PASSWORD),
 )
+index = "embeddings"
 
 
 def fetch_matching_data(alpha=None, predictions=None):
     """Elasticsearch에서 predictions 카테고리에 해당하는 데이터 가져오기 (Scroll API 사용)"""
+
     results = []
 
     if predictions:
@@ -26,24 +28,24 @@ def fetch_matching_data(alpha=None, predictions=None):
                 "_source": ["file_path", "text_embedding", "image_embedding"],
                 "query": {"wildcard": {"category": f"kor_{category}"}},
             }
-            results.extend(scroll_search("embeddings", query))
+            results.extend(scroll_search(index, query))
     else:
         if alpha == 0:
             query = {
                 "_source": ["file_path", "text_embedding"],
-                "query": {"match_all": {}}
+                "query": {"match_all": {}},
             }
         elif alpha == 1:
             query = {
                 "_source": ["file_path", "image_embedding"],
-                "query": {"match_all": {}}
+                "query": {"match_all": {}},
             }
         else:
             query = {
                 "_source": ["file_path", "text_embedding", "image_embedding"],
-                "query": {"match_all": {}}
+                "query": {"match_all": {}},
             }
-        results = scroll_search("embeddings", query)
+        results = scroll_search(index, query)
 
     return results
 
@@ -53,7 +55,9 @@ def scroll_search(index, query, scroll_time="1m", batch_size=1000):
     results = []
     try:
         # Scroll 초기화
-        response = es.search(index=index, body=query, scroll=scroll_time, size=batch_size)
+        response = es.search(
+            index=index, body=query, scroll=scroll_time, size=batch_size
+        )
         scroll_id = response["_scroll_id"]
         hits = response["hits"]["hits"]
 

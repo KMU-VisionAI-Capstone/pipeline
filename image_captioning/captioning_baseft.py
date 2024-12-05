@@ -25,8 +25,9 @@ def captioning(image_input):
     """
     이미지 ndarray를 입력받아 캡션을 생성.
     """
-    # numpy 배열을 PIL 이미지로 변환
-    image = Image.fromarray(image_input).convert("RGB")
+
+    if isinstance(image_input, str):  # 이미지 파일 경로
+        image = Image.open(image_input).convert("RGB")
 
     task = "<MORE_DETAILED_CAPTION>"
     text = "<MORE_DETAILED_CAPTION>"

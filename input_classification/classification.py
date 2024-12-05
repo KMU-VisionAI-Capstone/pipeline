@@ -39,6 +39,13 @@ def load_class_mapping(class_mapping_file):
     return idx_to_class
 
 
+# 모델 로드
+model = load_model(CHECKPOINT_PATH, MODEL_ARCH)
+
+# 클래스 이름 매핑 로드
+idx_to_class = load_class_mapping(CLASS_MAPPING_FILE)
+
+
 def preprocess_image(input_data, image_size):
     """이미지를 불러와 전처리합니다."""
     image_transforms = transforms.Compose(
@@ -64,7 +71,7 @@ def preprocess_image(input_data, image_size):
     return input_tensor.to(DEVICE)
 
 
-def predict(input_data, model, idx_to_class, top_k=5):
+def predict(input_data, top_k=5):
     """모델로 이미지를 예측하고 상위 k개 클래스를 반환합니다."""
     input_tensor = preprocess_image(input_data, IMAGE_SIZE)
     with torch.no_grad():
@@ -81,15 +88,8 @@ def predict(input_data, model, idx_to_class, top_k=5):
 
 def classify(input_data):
     """메인 실행 함수."""
-
-    # 모델 로드
-    model = load_model(CHECKPOINT_PATH, MODEL_ARCH)
-
-    # 클래스 이름 매핑 로드
-    idx_to_class = load_class_mapping(CLASS_MAPPING_FILE)
-
     # 예측 수행
-    predictions = predict(input_data, model, idx_to_class)
+    predictions = predict(input_data)
 
     # 결과 출력
     for class_name, prob in predictions:
