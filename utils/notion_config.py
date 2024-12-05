@@ -6,8 +6,6 @@ import requests, json
 dotenv.load_dotenv()
 
 NOTION_TOKEN = os.getenv("NOTION_TOKEN")
-# DATABASE_ID = "15343c22a7028078ac7ecd4e2133a3ae"
-NOTION_TOKEN = "ntn_r89471598463gom1XL35nXjOzvjUCDLH6S9t8o59uUy9qZ"
 DATABASE_ID = "7d0cfd79b3574c6cbf6e3ff5484bcd7e"
 
 
