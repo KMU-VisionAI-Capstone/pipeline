@@ -1,7 +1,8 @@
 import gradio as gr
 import time
 from input_classification.classification import classify
-from image_captioning.captioning_baseft import captioning
+import image_captioning.captioning_florence
+import image_captioning.captioning_base_ft
 from utils.es_config import fetch_matching_data
 from utils.embedding import generate_image_embedding, generate_text_embedding
 from utils.notion_config import push_to_notion
@@ -13,13 +14,19 @@ def update_classification_ui(predictions):
     classification_result = "<h2>Top Predictions</h2>"
     for label, score in predictions:
         classification_result += f"<p><strong>{label}:</strong> {score:.2f}%</p>"
+
     return classification_result
 
 
-def update_caption_ui(image_input):
+def update_caption_ui(image_input, index):
     """이미지 캡션 결과 UI를 반환합니다."""
-    caption = captioning(image_input)
+    if index == "embeddings_florence":
+        caption = image_captioning.captioning_florence.captioning(image_input)
+    else:
+        caption = image_captioning.captioning_base_ft.captioning(image_input)
+
     caption_result = f"<h2>Generated Caption</h2><p>{caption}</p>"
+
     return caption, caption_result
 
 
@@ -29,6 +36,7 @@ def update_gallery_ui(ranked_results):
     top_results = []
     results_html = "<h2>Top Matching Results</h2>"
     results_html_reverse = "<h2>Reverse Matching Results</h2>"
+
     for similarity, file_path in ranked_results[:5]:
         class_name = file_path.split("/")[-2].replace("kor_", "")
         file_name = file_path.split("/")[-1]
@@ -37,12 +45,14 @@ def update_gallery_ui(ranked_results):
         )
         gallery.append(file_path)
         top_results.append(f"{class_name} - {file_name} : {similarity:.4f}")
+
     for similarity, file_path in ranked_results[::-1][:5]:
         results_html_reverse += f"<p><strong>{file_path.split('/')[-2].replace('kor_', '')} - {file_path.split('/')[-1]}:</strong> {similarity:.4f}</p>"
+
     return gallery, top_results, results_html, results_html_reverse
 
 
-def on_click(image_input, alpha, checkbox):
+def on_click(image_input, alpha, checkbox, index):
     """버튼 클릭 시 워크플로우 수행"""
     start_time = time.time()
 
@@ -53,21 +63,17 @@ def on_click(image_input, alpha, checkbox):
     else:
         classification_html = ""
 
+    # 캡션 및 임베딩 생성
     if alpha == 0:
-        # 캡션 및 텍스트 임베딩 생성
-        caption_text, caption_html = update_caption_ui(image_input)
+        caption_text, caption_html = update_caption_ui(image_input, index)
         text_embedding = generate_text_embedding(caption_text)
         image_embedding = None
-
     elif alpha == 1:
-        # 이미지 임베딩 생성
-        caption_html = ""
+        caption_text, caption_html = "", ""
         image_embedding = generate_image_embedding(image_input)
         text_embedding = None
-
     else:
-        # 이미지 및 텍스트 임베딩 생성
-        caption_text, caption_html = update_caption_ui(image_input)
+        caption_text, caption_html = update_caption_ui(image_input, index)
         image_embedding = generate_image_embedding(image_input)
         text_embedding = generate_text_embedding(caption_text)
 
@@ -75,19 +81,16 @@ def on_click(image_input, alpha, checkbox):
 
     # Elasticsearch에서 매칭 데이터 가져오기
     if checkbox:
-        matching_data = fetch_matching_data(alpha=alpha, predictions=predictions)
+        matching_data = fetch_matching_data(
+            alpha=alpha, predictions=predictions, index=index
+        )
     else:
-        matching_data = fetch_matching_data(alpha=alpha)
+        matching_data = fetch_matching_data(alpha=alpha, index=index)
 
     print(f"[INFO] Matching Data Length: {len(matching_data)}")
 
     # 매칭 데이터와 코사인 유사도 계산
     ranked_results = rank_matches(image_embedding, text_embedding, matching_data, alpha)
-
-    # 결과 출력 HTML 생성
-    gallery, top_results, results_html, results_html_reverse = update_gallery_ui(
-        ranked_results
-    )
 
     # 수행 시간 계산
     end_time = time.time()
@@ -96,6 +99,15 @@ def on_click(image_input, alpha, checkbox):
         f"<h2>Time Taken</h2> <p><strong>{execution_time:.4f} seconds</strong></p>"
     )
 
+    # 결과 출력 HTML 생성
+    (
+        gallery,
+        top_results,
+        results_html,
+        results_html_reverse,
+    ) = update_gallery_ui(ranked_results)
+
+    # Notion에 결과 저장
     response = push_to_notion(
         image_input,
         alpha,
@@ -104,6 +116,7 @@ def on_click(image_input, alpha, checkbox):
         checkbox,
         caption_text,
         classification_html,
+        index,
     )
     if response.status_code == 200:
         print("[INFO] Notion Push Success")
@@ -126,6 +139,7 @@ def on_click(image_input, alpha, checkbox):
 # Gradio 인터페이스 생성
 with gr.Blocks() as demo:
     with gr.Row():
+
         with gr.Column():
             image_input = gr.Image(type="filepath")
             gr.Markdown(
@@ -138,6 +152,11 @@ with gr.Blocks() as demo:
                 checkbox = gr.Checkbox(
                     label="Set Classifier?", value=True, show_label=False
                 )
+                index_input = gr.Dropdown(
+                    choices=["embeddings", "embeddings_florence"],
+                    value="embeddings",
+                    show_label=False,
+                )
             alpha_slider = gr.Slider(
                 0,
                 1,
@@ -146,15 +165,17 @@ with gr.Blocks() as demo:
                 label="Alpha (Image-Text Weight)",
             )
             predict_button = gr.Button("Run Workflow")
+
         with gr.Row():
             gr.Markdown()
-            with gr.Column(scale=2):
+            with gr.Column(scale=3):
                 classification_output = gr.HTML()
                 caption_output = gr.HTML()
                 matching_results_output = gr.HTML()
                 matching_results_output_reverse = gr.HTML()
                 time_output = gr.HTML()
             gr.Markdown()
+
     with gr.Column():
         gallery = gr.Gallery(
             interactive=False,
@@ -164,7 +185,7 @@ with gr.Blocks() as demo:
 
     predict_button.click(
         fn=on_click,
-        inputs=[image_input, alpha_slider, checkbox],
+        inputs=[image_input, alpha_slider, checkbox, index_input],
         outputs=[
             classification_output,
             caption_output,
@@ -174,6 +195,5 @@ with gr.Blocks() as demo:
             time_output,
         ],
     )
-
 
 demo.launch(share=True)
