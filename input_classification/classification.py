@@ -92,8 +92,8 @@ def classify(input_data):
     predictions = predict(input_data)
 
     # 결과 출력
-    for class_name, prob in predictions:
-        print(f"  {class_name}: {prob:.2f}%")
+    # for class_name, prob in predictions:
+    #     print(f"  {class_name}: {prob:.2f}%")
 
     return predictions
 
