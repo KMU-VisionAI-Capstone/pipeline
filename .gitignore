@@ -6,3 +6,4 @@ __pycache__/
 .vscode/
 target_images/
 embeddings.json
+epoch12_val_loss1.102/
