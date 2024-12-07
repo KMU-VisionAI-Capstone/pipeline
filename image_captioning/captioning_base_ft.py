@@ -1,6 +1,6 @@
 import torch
 from PIL import Image
-from transformers import AutoProcessor, AutoModelForCausalLM, AutoConfig
+from transformers import AutoProcessor, AutoModelForCausalLM
 import numpy as np
 import warnings
 
@@ -11,18 +11,13 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 torch.cuda.empty_cache()
 
 # 모델 및 Processor 로드
-model_id = "./image_captioning/epoch12_val_loss1.102"
-config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
-config.vision_config.model_type = "davit"
-
 model = AutoModelForCausalLM.from_pretrained(
-    model_id,
-    trust_remote_code=True,
-    config=config,
+    "microsoft/Florence-2-base-ft",
     torch_dtype=torch.bfloat16,
+    trust_remote_code=True,
 ).to(device)
 processor = AutoProcessor.from_pretrained(
-    model_id, trust_remote_code=True, config=config
+    "microsoft/Florence-2-base-ft", trust_remote_code=True
 )
 
 
@@ -30,7 +25,7 @@ processor = AutoProcessor.from_pretrained(
 def captioning(image_input):
     if isinstance(image_input, str):
         image = Image.open(image_input).convert("RGB")
-    else:  # numpy 배열
+    else:
         image = Image.fromarray(image_input).convert("RGB")
 
     task = "<MORE_DETAILED_CAPTION>"
@@ -60,7 +55,7 @@ def captioning(image_input):
             image.height,
         ),
     )
-    caption = caption[task].replace("<pad>", "")
+    caption = caption["<MORE_DETAILED_CAPTION>"].replace("<pad>", "")
 
     return caption
 
@@ -68,9 +63,7 @@ def captioning(image_input):
 if __name__ == "__main__":
 
     # 테스트용 이미지 불러오기
-    test_image_path = (
-        "/home/jmkim/dev/capstone/test_data/tower.jpg"  # 실제 이미지 경로 입력
-    )
+    test_image_path = "/home/jmkim/dev/capstone/test_data/tower.jpg"
 
     # 이미지를 numpy 배열로 변환
     test_image = Image.open(test_image_path).convert("RGB")
