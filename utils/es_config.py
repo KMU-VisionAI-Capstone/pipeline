@@ -13,10 +13,9 @@ es = Elasticsearch(
     ssl_show_warn=False,
     basic_auth=("elastic", PASSWORD),
 )
-index = "embeddings"
 
 
-def fetch_matching_data(alpha=None, predictions=None):
+def fetch_matching_data(alpha=None, predictions=None, index=None):
     """Elasticsearch에서 predictions 카테고리에 해당하는 데이터 가져오기 (Scroll API 사용)"""
 
     results = []
