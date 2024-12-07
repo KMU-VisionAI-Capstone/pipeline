@@ -1,6 +1,6 @@
 import torch
 from PIL import Image
-from transformers import AutoProcessor, AutoModelForCausalLM
+from transformers import AutoProcessor, AutoModelForCausalLM, AutoConfig
 import numpy as np
 import warnings
 
@@ -12,12 +12,19 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 torch.cuda.empty_cache()
 
 # 모델 및 Processor 로드
+model_id = "epoch12_val_loss1.102"
+        config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
+config.vision_config.model_type = "davit"
+
 model = AutoModelForCausalLM.from_pretrained(
-    "microsoft/Florence-2-base-ft", torch_dtype=torch.bfloat16, trust_remote_code=True
-).to(device)
+    model_id,
+    trust_remote_code=True,
+    config=config,
+    torch_dtype = torch.bfloat16
+    ).to(args.device)
 processor = AutoProcessor.from_pretrained(
-    "microsoft/Florence-2-base-ft", trust_remote_code=True
-)
+    model_id, trust_remote_code=True, config=config
+    )
 
 
 @torch.no_grad()
@@ -47,7 +54,7 @@ def captioning(image_input):
     caption = processor.post_process_generation(
         generated_text, task=task, image_size=(image.width, image.height)
     )
-    caption = caption["<MORE_DETAILED_CAPTION>"]
+    caption = caption[task].replace("<pad>","")
 
     # 결과 반환 (캡션 문자열)
     return caption
