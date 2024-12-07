@@ -28,9 +28,21 @@ def push_to_notion(
     caption_text,
     classification_html,
     index,
+    timestamp,
 ):
 
     top_results = "".join([result + "\n" for result in top_results])
+    classification_html = (
+        classification_html.replace("<h2>", "")
+        .replace("</h2>", "")
+        .replace("</p>", "")
+        .replace("<p>", "")
+        .replace("<strong>", "")
+        .replace("</strong>", "")
+        .replace(":", ": ")
+        .replace("%", "%\n")
+        .replace("Top Predictions", "Top Predictions\n")
+    )
 
     newPageData = {
         "parent": {"database_id": DATABASE_ID},
@@ -38,29 +50,30 @@ def push_to_notion(
             "input_image": {
                 "title": [{"text": {"content": os.path.basename(image_input)}}]
             },
-            "alpha": {"number": alpha},
-            "set_classifier": {"checkbox": checkbox},
-            "classification_result": {
-                "rich_text": [
-                    {
-                        "text": {
-                            "content": classification_html.replace("<h2>", "")
-                            .replace("</h2>", "")
-                            .replace("<p>", "")
-                            .replace("</p>", "")
-                            .replace("<strong>", "")
-                            .replace("</strong>", "")
-                            .replace(":", ": ")
-                            .replace("%", "%\n")
-                            .replace("Top Predictions", "Top Predictions\n")
-                        }
-                    }
-                ]
+            "timestamp": {
+                "rich_text": [{"text": {"content": timestamp}}],
             },
-            "execution_time": {"number": execution_time},
-            "final_results": {"rich_text": [{"text": {"content": top_results}}]},
-            "caption": {"rich_text": [{"text": {"content": caption_text}}]},
-            "index": {"rich_text": [{"text": {"content": index}}]},
+            "alpha": {
+                "number": alpha,
+            },
+            "set_classifier": {
+                "checkbox": checkbox,
+            },
+            "classification_result": {
+                "rich_text": [{"text": {"content": classification_html}}]
+            },
+            "execution_time": {
+                "number": execution_time,
+            },
+            "final_results": {
+                "rich_text": [{"text": {"content": top_results}}],
+            },
+            "caption": {
+                "rich_text": [{"text": {"content": caption_text}}],
+            },
+            "index": {
+                "rich_text": [{"text": {"content": index}}],
+            },
         },
     }
 

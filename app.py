@@ -1,3 +1,4 @@
+from datetime import datetime
 import gradio as gr
 import time
 from input_classification.classification import classify
@@ -54,14 +55,19 @@ def update_gallery_ui(ranked_results):
 
 def on_click(image_input, alpha, checkbox, index):
     """버튼 클릭 시 워크플로우 수행"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     start_time = time.time()
+
+    print(f"[INFO] Workflow Started at {timestamp}")
 
     # 분류 수행
     if checkbox:
         predictions = classify(image_input)
         classification_html = update_classification_ui(predictions)
+        print(f"[INFO] Classification Completed")
     else:
         classification_html = ""
+        print(f"[INFO] Classification Skipped")
 
     # 캡션 및 임베딩 생성
     if alpha == 0:
@@ -117,6 +123,7 @@ def on_click(image_input, alpha, checkbox, index):
         caption_text,
         classification_html,
         index,
+        timestamp,
     )
     if response.status_code == 200:
         print("[INFO] Notion Push Success")
