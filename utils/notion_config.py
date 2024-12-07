@@ -27,6 +27,7 @@ def push_to_notion(
     checkbox,
     caption_text,
     classification_html,
+    index,
 ):
 
     top_results = "".join([result + "\n" for result in top_results])
@@ -59,6 +60,7 @@ def push_to_notion(
             "execution_time": {"number": execution_time},
             "final_results": {"rich_text": [{"text": {"content": top_results}}]},
             "caption": {"rich_text": [{"text": {"content": caption_text}}]},
+            "index": {"rich_text": [{"text": {"content": index}}]},
         },
     }
 
